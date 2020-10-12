@@ -46,6 +46,18 @@ class CenterNet:
     def get_label_map_data(self):
         label_map_dict, label_map_path, category_index = self.load_label_map()
         return label_map_dict, label_map_path, category_index
+    
+    def get_detections(self, image_np):
+        label_map_dict, label_map_path, category_index = self.load_label_map()
+        input_tensor = tf.convert_to_tensor(
+            np.expand_dims(image_np, 0), dtype=tf.float32)
+        detections, predictions_dict, shapes = self.model_detection_function(input_tensor)
+
+        classes_detected = (detections['detection_classes'][0].numpy() + 1).astype(int)
+        detections['detection_classes_name'] = []
+        for idx, bbox in enumerate(detections['detection_boxes'][0].numpy()):  
+            detections['detection_classes_name'].append(category_index[classes_detected[idx]]['name'])
+        return detections
 
     def run_inference(self, image_np):
         # Things to try:
