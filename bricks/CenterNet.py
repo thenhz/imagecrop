@@ -98,6 +98,11 @@ class CenterNet:
                     obj_score = self.classes_weight[detections['detection_classes_name'][idx]]#classes_weight[category_index[classes_detected[idx]]['name']]
                     np_im[int(top):int(bottom),int(left):int(right)] = obj_score
         
+        np_im = np.maximum(np_im, 0)
+        np_im /= np.max(np_im)
+
+        np_im = np.uint8(255 * np_im)
+
         return np_im
 
     def run_inference(self, image_np):
