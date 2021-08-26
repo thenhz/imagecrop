@@ -1,0 +1,6 @@
+pip install -r pip-requirements.txt
+conda install -c conda-forge notebook
+conda install cython
+pip install git+https://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI
+
+conda install -c anaconda protobuf

@@ -5,6 +5,8 @@ from object_detection.utils import visualization_utils as viz_utils
 from object_detection.builders import model_builder
 import tensorflow as tf
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from six import BytesIO
 
 class CenterNet:
 
@@ -43,11 +45,39 @@ class CenterNet:
 
         self.model_detection_function = get_model_detection_function(self.detection_model)
 
+        self.classes_weight = {
+            "kite": 1,
+            "person": 10,
+            "surfboard":1
+        }
+
+    def load_image_into_numpy_array(self, path):
+        """Load an image from file into a numpy array.
+
+        Puts image into numpy array to feed into tensorflow graph.
+        Note that by convention we put it into a numpy array with shape
+        (height, width, channels), where channels=3 for RGB.
+
+        Args:
+        path: the file path to the image
+
+        Returns:
+        uint8 numpy array with shape (img_height, img_width, 3)
+        """
+        img_data = tf.io.gfile.GFile(path, 'rb').read()
+        image = Image.open(BytesIO(img_data))
+        (im_width, im_height) = image.size
+        return np.array(image.getdata()).reshape(
+            (im_height, im_width, 3)).astype(np.uint8)
+
     def get_label_map_data(self):
         label_map_dict, label_map_path, category_index = self.load_label_map()
         return label_map_dict, label_map_path, category_index
     
-    def get_detections(self, image_np):
+    def get_detections(self, image_path):
+        image_np = self.load_image_into_numpy_array(image_path)
+        im_width = image_np.shape[0]
+        im_height = image_np.shape[1]
         label_map_dict, label_map_path, category_index = self.load_label_map()
         input_tensor = tf.convert_to_tensor(
             np.expand_dims(image_np, 0), dtype=tf.float32)
@@ -57,7 +87,18 @@ class CenterNet:
         detections['detection_classes_name'] = []
         for idx, bbox in enumerate(detections['detection_boxes'][0].numpy()):  
             detections['detection_classes_name'].append(category_index[classes_detected[idx]]['name'])
-        return detections
+        
+        np_im = np.zeros((im_width,im_height))
+        scores = detections['detection_scores'][0].numpy()
+        for idx, bbox in enumerate(detections['detection_boxes'][0].numpy()):  
+            if scores[idx] > 0.30:
+                ymin, xmin, ymax, xmax = tuple(bbox.tolist())
+                (left, right, top, bottom) = (xmin * im_height, xmax * im_height, ymin * im_width, ymax * im_width)
+                if detections['detection_classes_name'][idx] in self.classes_weight:
+                    obj_score = self.classes_weight[detections['detection_classes_name'][idx]]#classes_weight[category_index[classes_detected[idx]]['name']]
+                    np_im[int(top):int(bottom),int(left):int(right)] = obj_score
+        
+        return np_im
 
     def run_inference(self, image_np):
         # Things to try:
