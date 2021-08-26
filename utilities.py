@@ -86,3 +86,53 @@ def unpad_heatmap(heatmap, image_np, detection_model, shapes):
         resized_heatmap_unpadded,
         [image_np.shape[0], image_np.shape[1]],
         method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)[:, :, 0]
+
+
+#TODO: usare tecniche come la regola dei terzi & co
+#TODO: fare in modo di poter fare plug di ulteriori detector
+#TODO: non andare sotto una certa risoluzione
+
+def make_crop_coordinates_nhz(image, ratio_str):
+    if ratio_str == "16_9":
+        ratio = 0.5625
+    if ratio_str == "4_3":
+        ratio = 0.75
+    if ratio_str == "1_1":
+        ratio = 1
+    if ratio_str == "9_16":
+        ratio = 1.7777
+    if ratio_str == "3_4":
+        ratio = 1.3333
+    height = image.shape[0]
+    width = image.shape[1]
+    coodinates = []
+    shorter_dimension = min(width, height)
+    position_step = shorter_dimension / 80
+    if(ratio <= 1):
+        sizes = [width * 0.6,width * 0.7,width * 0.8, width * 0.9, width]
+    else:
+        sizes = [width * 0.1,width * 0.2,width * 0.3, width * 0.4, width * 0.5]
+    for size in sizes:
+        position_width = 0
+        crop_height = int(size * ratio)
+        crop_width = int(size)
+        while True:
+            position_height = 0
+            while True:
+                if position_height + crop_height > height:
+                    break
+                    
+                new_coord = (position_width, position_height,
+                                   position_width + int(size), position_height + crop_height)
+                coodinates.append(new_coord)
+                #print(new_coord)
+                #print("INCREASING HEIGHT")
+                position_height += position_step
+                
+            position_width += position_step
+            #print("INCREASING WIDTH")
+            if position_width + crop_width > width:
+                #print("**********************")
+                break
+            
+    return coodinates
